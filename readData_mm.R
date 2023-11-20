@@ -1,5 +1,11 @@
+source("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/utils.R")
 library(Seurat)
 library(SeuratData)
+library(scater)
+library(stringr)
+options(stringsAsFactors=FALSE)
+library(reshape2)
+library(plyr)
 
 load("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/MMNeu_2023.RData")
 
@@ -7,7 +13,8 @@ load("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/MMNeu_2023.R
 # subset 1. new_cluster == Other_MatNeu
 met_1 <- Seurat::FetchData(object = mm, vars = "new_cluster")
 seu_obj <- mm[, which(met_1 == "Other_MatNeu")]
-seu_obj_m <- as.matrix(Seurat::GetAssay(seu_obj, "RNA")@data)
+seu_obj_m <- as.matrix(Seurat::GetAssay(seu_obj, "SCT")@data)
+# seu_obj_m <- as.matrix(Seurat::GetAssay(seu_obj, "RNA")@data)
 
 # column data
 met_cell_type <- as.matrix(Seurat::FetchData(object = seu_obj, vars = "hpca_fine", clean = FALSE))

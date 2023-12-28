@@ -11,11 +11,12 @@ library(scuttle)
 
 #1 load the data
 selected_impute_sce <- readRDS(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","selected_impute_sce.rds"))
-selected_sce <- readRDS(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","sce_Other_MatNeu.rds"))
+selected_impute_sce <- selected_impute_sce[rowData(selected_impute_sce)$metabolic,]
+selected_sce <- readRDS(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","sce_all.rds"))
 cell_types <- unique(selected_sce$cellType)
 
 ## choose the genes with higher expression and low-dropout rate 
-dropout_cutoff <- 0.75
+dropout_cutoff <- 0.6
 gene_select_mat <- matrix(FALSE,nrow=nrow(selected_impute_sce),
                           ncol=length(cell_types),
                           dimnames = list(rownames(selected_impute_sce),cell_types))
@@ -33,14 +34,15 @@ low_dropout_genes <- rownames(gene_select_mat)[rowSums(gene_select_mat) >= lengt
 ##########################################################################################
 ## different normalization methods:
 ##########################################################################################
-#prepare the gene length file
-#convert the TPM to count scale
+
+# prepare the gene length file
+# subset the tpm data
 all_gene_lengths <- read.table("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/gene_length.txt",sep="\t",header=F,row.names=1)
-tmp <- intersect(rownames(all_gene_lengths),rownames(selected_impute_sce))
-if (length(tmp) != nrow(selected_impute_sce)){
-  warning("check the length file")
-}
-genelen <- all_gene_lengths[rownames(selected_impute_sce),]
+common_genes <- intersect(rownames(selected_impute_sce), rownames(all_gene_lengths))
+selected_impute_sce <- selected_impute_sce[common_genes, ]
+
+# subset genelength data
+genelen <- all_gene_lengths[common_genes, ]
 genelen <- as.numeric(as.vector(genelen))
 
 #1. up-quantile normalization
@@ -56,7 +58,7 @@ saveRDS(selected_impute_tpm_norm,file.path("/Users/zhiruiguo/UW-Madison/23fall/D
 
 #2.DESeq2 normalization
 # get the function from "https://github.com/mikelove/DESeq2/blob/master/R/core.R"
-source("../utils.R")
+source("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/utils.R")
 deseq2_sf <- estimateSizeFactorsForMatrix(selected_impute_counts[low_dropout_genes,])
 selected_impute_tpm_norm <- t(t(selected_impute_tpm) / deseq2_sf)
 selected_impute_exp_norm <- log2(selected_impute_tpm_norm + 1)

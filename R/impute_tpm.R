@@ -3,29 +3,33 @@ library(scater)
 
 num_cores <- 4 #for windows it should be 1
 
-selected_sce <- readRDS(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","sce_Other_MatNeu.rds"))
+selected_sce <- readRDS(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","sce_all.rds"))
+
+# subset the tpm data
+all_gene_lengths <- read.table("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/gene_length.txt",sep="\t",header=F,row.names=1)
+common_genes <- intersect(rownames(selected_sce), rownames(all_gene_lengths))
+selected_sce <- selected_sce[common_genes, ]
 
 #write the tpm matrix
 selected_tpm <- tpm(selected_sce) 
+
+# subset genelength data
+genelen <- all_gene_lengths[common_genes, ]
+genelen <- as.numeric(as.vector(genelen))
+
 labels <- selected_sce$cellType
 
 write.csv(selected_tpm,file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","tumor.tpm"))
 
-##prepare the gene length file
-all_gene_lengths <- read.table("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data/gene_length.txt",sep="\t",header=F,row.names=1)
-tmp <- intersect(rownames(all_gene_lengths),rownames(selected_tpm))
-if (length(tmp) != nrow(selected_tpm)){
-  warning("check the length file")
-  print(setdiff(rownames(selected_tpm),rownames(all_gene_lengths)))
-  q()
-}
-genelen <- all_gene_lengths[rownames(selected_tpm),]
-genelen <- as.numeric(as.vector(genelen))
 scimpute(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","tumor.tpm"),infile="csv",outfile="csv",out_dir=file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","malignant_"),
          labeled=TRUE,labels=as.vector(labels),
          type="TPM",genelen=genelen,drop_thre=0.5,ncores=num_cores)
 
 imputed_tpm <- read.csv(file.path("/Users/zhiruiguo/UW-Madison/23fall/DinhLab/metabolic_lab_data","malignant_scimpute_count.csv"),header=T,row.names=1)
+
+# adjust naming convention
+colnames(imputed_tpm) <- gsub("\\.", "-", colnames(imputed_tpm))
+
 tpm(selected_sce) <- data.matrix(imputed_tpm) 
 assay(selected_sce,"exprs") <- data.matrix(log2(imputed_tpm + 1))
 
